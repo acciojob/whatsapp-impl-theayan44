@@ -98,10 +98,58 @@ public class WhatsappRepository {
     }
 
     public int removeUser(User user) {
-        return 0;
+        boolean userFound = false;
+        Group userGroup = null;
+        for(Group currGroup : groupUserMap.keySet()){
+            List<User> currGroupMembers = groupUserMap.get(currGroup);
+            if(currGroupMembers.contains(user)){
+                userFound = true;
+                userGroup = currGroup;
+                break;
+            }
+        }
+        if(!userFound){
+            throw new RuntimeException("User not found");
+        }
+
+        if(adminMap.get(userGroup) == user){
+            throw new RuntimeException("Cannot remove admin");
+        }
+
+        groupUserMap.get(userGroup).remove(user);
+
+        for(Message currMessage : senderMap.keySet()){
+            if(senderMap.get(currMessage) == user){
+                groupMessageMap.get(userGroup).remove(currMessage);
+                senderMap.remove(currMessage);
+            }
+        }
+
+        userMobile.remove(user.getMobile());
+        userGroup.setNumberOfParticipants(groupUserMap.get(userGroup).size());
+
+        return groupUserMap.get(userGroup).size() + groupMessageMap.get(userGroup).size() + senderMap.size();
     }
 
     public String findMessage(Date start, Date end, int k) {
+        TreeMap<Date, Message> datesMessageDB = new TreeMap<>();
+        for(Message currMessage : senderMap.keySet()){
+            Date currMessageDate = currMessage.getTimestamp();
+            if(currMessageDate.after(start) && currMessageDate.before(end)){
+                datesMessageDB.put(currMessageDate, currMessage);
+            }
+        }
+        if(datesMessageDB.size() < k){
+            throw new RuntimeException("K is greater than the number of messages");
+        }
+
+        int count = 0;
+        for(Date key : datesMessageDB.keySet()){
+            if(count == (datesMessageDB.size() - k)){
+                return datesMessageDB.get(key).getContent();
+            }
+            count++;
+        }
         return "";
     }
 }
